@@ -7,43 +7,122 @@ interface PawPrint {
   rotation: number
   size: number
   createdAt: number
+  pawType: 'front-left' | 'front-right' | 'back-left' | 'back-right'
+  walkId: string
 }
 
-const PawIcon = ({ size = 24, className = "" }: { size?: number; className?: string }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    className={className}
-  >
-    <path d="M12 2C10.9 2 10 2.9 10 4C10 5.1 10.9 6 12 6C13.1 6 14 5.1 14 4C14 2.9 13.1 2 12 2Z" />
-    <path d="M8.5 4C7.4 4 6.5 4.9 6.5 6C6.5 7.1 7.4 8 8.5 8C9.6 8 10.5 7.1 10.5 6C10.5 4.9 9.6 4 8.5 4Z" />
-    <path d="M15.5 4C14.4 4 13.5 4.9 13.5 6C13.5 7.1 14.4 8 15.5 8C16.6 8 17.5 7.1 17.5 6C17.5 4.9 16.6 4 15.5 4Z" />
-    <path d="M6 8C4.9 8 4 8.9 4 10C4 11.1 4.9 12 6 12C7.1 12 8 11.1 8 10C8 8.9 7.1 8 6 8Z" />
-    <path d="M18 8C16.9 8 16 8.9 16 10C16 11.1 16.9 12 18 12C19.1 12 20 11.1 20 10C20 8.9 19.1 8 18 8Z" />
-    <path d="M12 8C9.8 8 8 9.8 8 12C8 14.2 9.8 16 12 16C14.2 16 16 14.2 16 12C16 9.8 14.2 8 12 8Z" />
-  </svg>
-)
+interface WalkingDog {
+  id: string
+  x: number
+  y: number
+  direction: number
+  speed: number
+  stepCount: number
+  lastStepTime: number
+  size: number
+}
+
+const PawIcon = ({ size = 24, className = '', pawType }: { 
+  size?: number
+  className?: string
+  pawType: 'front-left' | 'front-right' | 'back-left' | 'back-right'
+}) => {
+  const isFrontPaw = pawType.includes('front')
+  
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox='0 0 24 24'
+      fill='currentColor'
+      className={className}
+    >
+      {isFrontPaw ? (
+        <>
+          <ellipse cx='12' cy='16' rx='6' ry='4' />
+          <circle cx='8' cy='8' r='2.5' />
+          <circle cx='12' cy='6' r='2.5' />
+          <circle cx='16' cy='8' r='2.5' />
+          <circle cx='6' cy='12' r='2' />
+        </>
+      ) : (
+        <>
+          <ellipse cx='12' cy='15' rx='5' ry='3.5' />
+          <circle cx='9' cy='8' r='2' />
+          <circle cx='12' cy='7' r='2' />
+          <circle cx='15' cy='8' r='2' />
+          <circle cx='7' cy='11' r='1.5' />
+        </>
+      )}
+    </svg>
+  )
+}
 
 function App() {
   const [pawPrints, setPawPrints] = useState<PawPrint[]>([])
-  const [nextId, setNextId] = useState(1)
+  const [dogs, setDogs] = useState<WalkingDog[]>([])
+  const [nextPawId, setNextPawId] = useState(1)
 
-  const createPawPrint = useCallback(() => {
+  const createNewDog = useCallback(() => {
+    const startSide = Math.random() < 0.5 ? 'left' : 'top'
+    const dogSize = 0.8 + Math.random() * 0.6
+    
+    let startX, startY, direction
+    
+    if (startSide === 'left') {
+      startX = -50
+      startY = 100 + Math.random() * (window.innerHeight - 200)
+      direction = -30 + Math.random() * 60
+    } else {
+      startX = 100 + Math.random() * (window.innerWidth - 200)
+      startY = -50
+      direction = 60 + Math.random() * 60
+    }
+    
+    const newDog: WalkingDog = {
+      id: `dog-${Date.now()}-${Math.random()}`,
+      x: startX,
+      y: startY,
+      direction,
+      speed: 1 + Math.random() * 2,
+      stepCount: 0,
+      lastStepTime: Date.now(),
+      size: dogSize
+    }
+    
+    setDogs(prev => [...prev, newDog])
+  }, [])
+
+  const createPawPrint = useCallback((dog: WalkingDog, pawType: PawPrint['pawType']) => {
+    const isLeft = pawType.includes('left')
+    const isFront = pawType.includes('front')
+    
+    const dirRad = (dog.direction * Math.PI) / 180
+    
+    const sideOffset = (isLeft ? -1 : 1) * 15 * dog.size
+    const frontBackOffset = (isFront ? -10 : 10) * dog.size
+    
+    const pawX = dog.x + 
+      Math.cos(dirRad) * frontBackOffset - 
+      Math.sin(dirRad) * sideOffset
+    const pawY = dog.y + 
+      Math.sin(dirRad) * frontBackOffset + 
+      Math.cos(dirRad) * sideOffset
+    
     const newPaw: PawPrint = {
-      id: nextId,
-      x: Math.random() * (window.innerWidth - 60),
-      y: Math.random() * (window.innerHeight - 60),
-      rotation: Math.random() * 360,
-      size: 20 + Math.random() * 20, // Size between 20-40px
-      createdAt: Date.now()
+      id: nextPawId,
+      x: pawX,
+      y: pawY,
+      rotation: dog.direction + (Math.random() - 0.5) * 30,
+      size: (18 + Math.random() * 8) * dog.size,
+      createdAt: Date.now(),
+      pawType,
+      walkId: dog.id
     }
 
     setPawPrints(prev => {
       const updated = [...prev, newPaw]
       
-      // If we have more than 100 prints, remove the oldest ones
       if (updated.length > 100) {
         return updated.slice(-100)
       }
@@ -51,45 +130,84 @@ function App() {
       return updated
     })
     
-    setNextId(prev => prev + 1)
-  }, [nextId])
+    setNextPawId(prev => prev + 1)
+  }, [nextPawId])
 
-  // Create new paw prints at random intervals
   useEffect(() => {
-    const createPawInterval = () => {
-      const randomDelay = 200 + Math.random() * 800 // Random delay between 200-1000ms
+    const animationFrame = () => {
+      const now = Date.now()
+      
+      setDogs(prevDogs => {
+        return prevDogs.map(dog => {
+          const dirRad = (dog.direction * Math.PI) / 180
+          const newX = dog.x + Math.cos(dirRad) * dog.speed
+          const newY = dog.y + Math.sin(dirRad) * dog.speed
+          
+          const stepInterval = 400 + Math.random() * 200
+          let newStepCount = dog.stepCount
+          
+          if (now - dog.lastStepTime > stepInterval) {
+            const pawSequence = ['front-left', 'back-right', 'front-right', 'back-left'] as const
+            const currentPaw = pawSequence[dog.stepCount % 4]
+            
+            createPawPrint(dog, currentPaw)
+            newStepCount = dog.stepCount + 1
+          }
+          
+          return {
+            ...dog,
+            x: newX,
+            y: newY,
+            stepCount: newStepCount,
+            lastStepTime: now - dog.lastStepTime > stepInterval ? now : dog.lastStepTime
+          }
+        }).filter(dog => {
+          return dog.x > -100 && dog.x < window.innerWidth + 100 && 
+                 dog.y > -100 && dog.y < window.innerHeight + 100
+        })
+      })
+      
+      requestAnimationFrame(animationFrame)
+    }
+    
+    const frameId = requestAnimationFrame(animationFrame)
+    return () => cancelAnimationFrame(frameId)
+  }, [createPawPrint])
+
+  useEffect(() => {
+    const createDogInterval = () => {
+      const randomDelay = 3000 + Math.random() * 5000
       
       const timeout = setTimeout(() => {
-        createPawPrint()
-        createPawInterval() // Schedule next paw print
+        createNewDog()
+        createDogInterval()
       }, randomDelay)
       
       return timeout
     }
 
-    const timeout = createPawInterval()
+    createNewDog()
+    const timeout = createDogInterval()
     
     return () => clearTimeout(timeout)
-  }, [createPawPrint])
+  }, [createNewDog])
 
-  // Clean up old paw prints that should fade out
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
       const now = Date.now()
       setPawPrints(prev => 
-        prev.filter(paw => now - paw.createdAt < 15000) // Keep prints for 15 seconds
+        prev.filter(paw => now - paw.createdAt < 20000)
       )
-    }, 1000)
+    }, 2000)
 
     return () => clearInterval(cleanupInterval)
   }, [])
 
   return (
-    <div className="min-h-screen w-full bg-background overflow-hidden relative">
-      {/* Paw prints */}
+    <div className='min-h-screen w-full bg-background overflow-hidden relative'>
       {pawPrints.map((paw, index) => {
         const age = Date.now() - paw.createdAt
-        const shouldFadeOut = age > 12000 // Start fading after 12 seconds
+        const shouldFadeOut = age > 15000
         
         return (
           <div
@@ -99,23 +217,23 @@ function App() {
               left: `${paw.x}px`,
               top: `${paw.y}px`,
               transform: `rotate(${paw.rotation}deg)`,
-              animationDelay: `${index * 50}ms`,
-              zIndex: 100 - index // Newer prints appear on top
+              animationDelay: `${index * 20}ms`,
+              zIndex: Math.max(1, 100 - index)
             }}
           >
-            <PawIcon size={paw.size} />
+            <PawIcon size={paw.size} pawType={paw.pawType} />
           </div>
         )
       })}
       
-      {/* Optional: Add a subtle title */}
-      <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-50">
-        <h1 className="text-2xl font-medium text-primary/60 tracking-wide">
-          Dog Paw Prints
+      <div className='absolute top-8 left-1/2 transform -translate-x-1/2 z-50'>
+        <h1 className='text-2xl font-medium text-primary/60 tracking-wide text-center'>
+          Dogs Walking
         </h1>
-        <p className="text-sm text-primary/40 text-center mt-2">
-          {pawPrints.length} prints on screen
-        </p>
+        <div className='text-sm text-primary/40 text-center mt-2 space-y-1'>
+          <p>{dogs.length} dogs walking</p>
+          <p>{pawPrints.length} paw prints on screen</p>
+        </div>
       </div>
     </div>
   )
